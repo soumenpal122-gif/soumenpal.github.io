@@ -127,6 +127,18 @@
       background: #ffeaa7;
       font-size: 2rem;
       font-weight: 900;
+      overflow: hidden;
+    }
+
+    .avatar img, .mini-avatar img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      border-radius: 50%;
+    }
+
+    .profile-upload {
+      margin-top: 0.8rem;
     }
 
     .center { text-align: center; }
@@ -286,6 +298,7 @@
       <div class="panel center">
         <h2 id="profileName">ILU User</h2>
         <p class="muted" id="profileEmail">user@ilu.social</p>
+        <label class="upload-label profile-upload">🖼️ Upload profile image<input id="profileImageInput" type="file" accept="image/*" /></label>
         <div class="stats">
           <span><strong id="postCount">0</strong>Posts</span>
           <span><strong id="likeCount">0</strong>Likes</span>
@@ -367,18 +380,25 @@
       return `${Math.floor(hours / 24)}d ago`;
     }
 
+    function avatarMarkup(user, className = '') {
+      const avatar = initials(user.name);
+      const image = user.profileImage;
+      return image
+        ? `<img src="${image}" alt="${escapeHtml(user.name)} profile image" class="${className}" />`
+        : escapeHtml(avatar);
+    }
+
     function renderShell() {
       const loggedIn = Boolean(state.user);
       $('loginView').classList.toggle('hidden', loggedIn);
       $('appView').classList.toggle('hidden', !loggedIn);
       document.querySelectorAll('.logged-in').forEach(el => el.classList.toggle('hidden', !loggedIn));
       if (!loggedIn) return;
-      const avatar = initials(state.user.name);
       $('navName').textContent = state.user.name;
       $('profileName').textContent = state.user.name;
       $('profileEmail').textContent = state.user.email;
-      $('profileAvatar').textContent = avatar;
-      $('composerAvatar').textContent = avatar;
+      $('profileAvatar').innerHTML = avatarMarkup(state.user);
+      $('composerAvatar').innerHTML = avatarMarkup(state.user);
       renderFeed();
     }
 
@@ -394,7 +414,7 @@
         <article class="card post" data-id="${post.id}">
           <div class="post-header">
             <div class="author">
-              <div class="mini-avatar">${escapeHtml(initials(post.author))}</div>
+              <div class="mini-avatar">${post.email === state.user.email ? avatarMarkup(state.user) : escapeHtml(initials(post.author))}</div>
               <div><strong>${escapeHtml(post.author)}</strong><div class="muted">${timeAgo(post.createdAt)}</div></div>
             </div>
             ${post.email === state.user.email ? '<button class="btn danger small delete-post">Delete</button>' : ''}
@@ -425,7 +445,7 @@
 
     $('loginForm').addEventListener('submit', (event) => {
       event.preventDefault();
-      state.user = { name: $('nameInput').value.trim(), email: $('emailInput').value.trim() };
+      state.user = { name: $('nameInput').value.trim(), email: $('emailInput').value.trim(), profileImage: '' };
       save();
       renderShell();
     });
@@ -434,6 +454,18 @@
       state.user = null;
       localStorage.removeItem('iluUser');
       renderShell();
+    });
+
+    $('profileImageInput').addEventListener('change', (event) => {
+      const file = event.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        state.user.profileImage = reader.result;
+        save();
+        renderShell();
+      };
+      reader.readAsDataURL(file);
     });
 
     $('photoInput').addEventListener('change', (event) => {
